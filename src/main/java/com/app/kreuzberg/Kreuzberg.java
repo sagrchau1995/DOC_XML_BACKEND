@@ -1,4 +1,4 @@
-package com.kreuzberg;
+package com.app.kreuzberg;
 
 // Stubbed Kreuzberg Classes so the project compiles.
 // Real library should be installed or compiled via native JNI.

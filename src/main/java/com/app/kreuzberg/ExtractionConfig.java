@@ -1,4 +1,4 @@
-package com.kreuzberg;
+package com.app.kreuzberg;
 
 public class ExtractionConfig {
     private String outputFormat;
