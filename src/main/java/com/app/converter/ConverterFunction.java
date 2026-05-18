@@ -16,6 +16,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -24,11 +26,13 @@ import java.util.UUID;
 /**
  * Main Lambda handler triggered by S3 upload events.
  * Orchestrates the full pipeline:
- *   1. Download uploaded file from S3
- *   2. Extract text from the document (Kreuzberg stub / future: PDFBox or Textract)
- *   3. Upload extracted text to S3
- *   4. Convert extracted text to structured XML via Amazon Bedrock (Claude 3 Haiku)
- *   5. Upload resulting XML to S3
+ * 1. Download uploaded file from S3
+ * 2. Extract text from the document (Kreuzberg stub / future: PDFBox or
+ * Textract)
+ * 3. Upload extracted text to S3
+ * 4. Convert extracted text to structured XML via Amazon Bedrock (Claude 3
+ * Haiku)
+ * 5. Upload resulting XML to S3
  */
 public class ConverterFunction implements RequestHandler<S3Event, String> {
 
@@ -56,7 +60,8 @@ public class ConverterFunction implements RequestHandler<S3Event, String> {
 
         for (var record : s3Event.getRecords()) {
             String bucket = record.getS3().getBucket().getName();
-            String key = record.getS3().getObject().getKey();
+            // S3 event notifications URL-encode the key (spaces → +), so we must decode it
+            String key = URLDecoder.decode(record.getS3().getObject().getKey(), StandardCharsets.UTF_8);
             logger.info("Processing file from bucket: {} and key: {}", bucket, key);
 
             try {
@@ -118,7 +123,8 @@ public class ConverterFunction implements RequestHandler<S3Event, String> {
 
     /**
      * Extracts text from the downloaded document using Kreuzberg (stub).
-     * In production, replace with PDFBox, AWS Textract, or a real Kreuzberg implementation.
+     * In production, replace with PDFBox, AWS Textract, or a real Kreuzberg
+     * implementation.
      */
     private String extractText(Path filePath) {
         ExtractionConfig config = ExtractionConfig.builder()
@@ -129,7 +135,8 @@ public class ConverterFunction implements RequestHandler<S3Event, String> {
     }
 
     /**
-     * Converts extracted text to structured XML using Amazon Bedrock (Claude 3 Haiku).
+     * Converts extracted text to structured XML using Amazon Bedrock (Claude 3
+     * Haiku).
      */
     private String convertToXml(String extractedText) {
         String prompt = """
@@ -140,9 +147,9 @@ public class ConverterFunction implements RequestHandler<S3Event, String> {
                 3. Preserve headings with <heading> elements
                 4. Wrap paragraphs in <paragraph> elements
                 5. Preserve any tables, lists, or structured data appropriately
-                
+
                 Output ONLY the raw XML document, no explanations or markdown.
-                
+
                 Text:
                 """ + extractedText;
 
@@ -159,8 +166,7 @@ public class ConverterFunction implements RequestHandler<S3Event, String> {
                         .key(key)
                         .contentType(key.endsWith(".xml") ? "application/xml" : "text/plain")
                         .build(),
-                RequestBody.fromString(content)
-        );
+                RequestBody.fromString(content));
     }
 
     /**
